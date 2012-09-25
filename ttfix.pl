@@ -8,11 +8,12 @@
 use File::Copy;
 use File::Find;
 use LWP::UserAgent;
+use Sys::Syslog qw( :DEFAULT setlogsock);
 
 $vps_mode = 1;	# set to 0 for Hybrid, 1 for VPS host node
 $tt_ver = '2.8.10';
 $tt_url='http://timthumb.googlecode.com/svn/trunk/timthumb.php';
-$base_dir = "/home/";
+$base_dir = "/home/"; # base path is used in Hybrid mode
 $count = 0;
 
 &download_timthumb;
@@ -28,7 +29,7 @@ else
 	find(\&find_timthumb, $base_dir);
 }
 
-print "Completed.  $count files were replaced.\n";
+logit("info", "Completed.  $count files were replaced.");
 
 sub download_timthumb
 {
@@ -92,11 +93,10 @@ sub check_version
 }
 
 sub replace
-{
-	
+{	
 	my $copy = 'timthumb.disabled';
 	
-	print "Replacing $File::Find::name - Version: $ver \n";
+	logit("info", "Replacing $File::Find::name - Version: $ver");
 	
 	copy($File::Find::name, $copy) or die "File cannot be copied.";
 				
@@ -107,3 +107,14 @@ sub replace
 	
 	$count++;
 }
+
+sub logit {
+	my ($priority, $msg) = @_; 
+    return 0 unless ($priority =~ /info|err|debug/);
+    setlogsock('unix');
+    openlog($0, '', 'user');
+    syslog($priority, $msg);
+	print $msg;						# write to the console as well
+    closelog();
+    return 1;
+    }
